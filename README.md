@@ -68,6 +68,51 @@ Diagram:
 npm install
 ```
 
+### Install Playwright agents
+
+```bash
+npx playwright init-agents --loop=vscode
+```
+
+### Configure MCP servers
+
+Create or update `.vscode/mcp.json` with:
+
+```jsonc
+{
+    "servers": {
+        "playwright": {
+            "command": "npx",
+            "args": [
+                "@playwright/mcp@latest"
+            ]
+        },
+        "playwright-test": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "playwright",
+                "run-test-mcp-server"
+            ]
+        },
+        "github": {
+            "type": "http",
+            "url": "https://api.githubcopilot.com/mcp/",
+            "headers": {
+                "Authorization": "Bearer ${env:GITHUB_TOKEN}"
+            }
+        }
+    },
+    "inputs": []
+}
+```
+
+Set your GitHub token before using GitHub MCP:
+
+```powershell
+$env:GITHUB_TOKEN = "<your_token>"
+```
+
 ## Run the test
 
 ```bash

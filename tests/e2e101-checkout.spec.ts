@@ -10,6 +10,8 @@ const shipping = {
 };
 const productA = 'Sauce Labs Backpack';
 const productB = 'Sauce Labs Bike Light';
+const xssPayload = "<script>alert('xss')</script>";
+const sqlInjectionPayload = "' OR '1'='1";
 
 test.describe('E2E Checkout Workflow - SauceDemo', () => {
   test('should complete a checkout flow successfully', async ({ page, loginPage, productsPage, cartPage, checkoutInformationPage, checkoutOverviewPage, checkoutCompletePage }) => {
@@ -213,6 +215,45 @@ test.describe('E2E Checkout Workflow - SauceDemo', () => {
 
     await expect(page).toHaveURL(/checkout-step-two.html/);
     await checkoutOverviewPage.finish();
+    await checkoutCompletePage.expectOrderComplete();
+  });
+
+  test('should handle XSS payload in checkout fields without script execution @security @negative', async ({ page, loginPage, productsPage, cartPage, checkoutInformationPage }) => {
+    await loginPage.goto();
+    await loginPage.login(username, password);
+
+    await productsPage.addItemToCart(productA);
+    await productsPage.openCart();
+    await cartPage.checkout();
+
+    let dialogTriggered = false;
+    page.on('dialog', async (dialog) => {
+      dialogTriggered = true;
+      await dialog.dismiss();
+    });
+
+    await checkoutInformationPage.fillCustomerInformation(xssPayload, shipping.lastName, shipping.postalCode);
+    await checkoutInformationPage.continue();
+
+    await expect(page).toHaveURL(/checkout-step-two.html/);
+    await expect(page.locator('.error-message-container')).toHaveCount(0);
+    expect(dialogTriggered).toBeFalsy();
+  });
+
+  test('should handle SQL injection-like input in checkout fields without breaking flow @security @negative', async ({ page, loginPage, productsPage, cartPage, checkoutInformationPage, checkoutOverviewPage, checkoutCompletePage }) => {
+    await loginPage.goto();
+    await loginPage.login(username, password);
+
+    await productsPage.addItemToCart(productB);
+    await productsPage.openCart();
+    await cartPage.checkout();
+
+    await checkoutInformationPage.fillCustomerInformation('Robert', sqlInjectionPayload, shipping.postalCode);
+    await checkoutInformationPage.continue();
+
+    await expect(page).toHaveURL(/checkout-step-two.html/);
+    await checkoutOverviewPage.finish();
+    await expect(page).toHaveURL(/checkout-complete.html/);
     await checkoutCompletePage.expectOrderComplete();
   });
 
